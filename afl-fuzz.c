@@ -1354,7 +1354,7 @@ EXP_ST void setup_shm(void) {
 
   u8* shm_str;
 
-  if (!in_bitmap) memset(virgin_bits, 255, MAP_SIZE);//初始化为255
+  if (!in_bitmap) memset(virgin_bits, 255, MAP_SIZE); //初始化为255
 
   memset(virgin_tmout, 255, MAP_SIZE);
   memset(virgin_crash, 255, MAP_SIZE);
@@ -1372,11 +1372,11 @@ EXP_ST void setup_shm(void) {
      fork server commands. This should be replaced with better auto-detection
      later on, perhaps? */
 
-  if (!dumb_mode) setenv(SHM_ENV_VAR, shm_str, 1);
+  if (!dumb_mode) setenv(SHM_ENV_VAR, shm_str, 1); // 设置将share memory的id放到环境变量中
 
   ck_free(shm_str);
 
-  trace_bits = shmat(shm_id, NULL, 0);
+  trace_bits = shmat(shm_id, NULL, 0); // 指向sharememory，fuzzer使用
   
   if (!trace_bits) PFATAL("shmat() failed");
 
@@ -1990,16 +1990,16 @@ EXP_ST void init_forkserver(char** argv) {
   int st_pipe[2], ctl_pipe[2];
   int status;
   s32 rlen;
-
+      printf("target_path:%s\n", target_path);
   ACTF("Spinning up the fork server...");
-
+  // 创建管道
   if (pipe(st_pipe) || pipe(ctl_pipe)) PFATAL("pipe() failed");
 
   forksrv_pid = fork();
 
   if (forksrv_pid < 0) PFATAL("fork() failed");
 
-  if (!forksrv_pid) {
+  if (!forksrv_pid) { // 子进程
 
     struct rlimit r;
 
@@ -2046,7 +2046,7 @@ EXP_ST void init_forkserver(char** argv) {
 
     setsid();
 
-    dup2(dev_null_fd, 1);
+    dup2(dev_null_fd, 1); // 使文件描述符1同样指向dev_null_fd的文件
     dup2(dev_null_fd, 2);
 
     if (out_file) {
@@ -2061,7 +2061,7 @@ EXP_ST void init_forkserver(char** argv) {
     }
 
     /* Set up control and status pipes, close the unneeded original fds. */
-
+    // 子进程使用FORKSRV_FD来读，使用FORKSRV_FD+1来写入状态
     if (dup2(ctl_pipe[0], FORKSRV_FD) < 0) PFATAL("dup2() failed");
     if (dup2(st_pipe[1], FORKSRV_FD + 1) < 0) PFATAL("dup2() failed");
 
@@ -2096,7 +2096,7 @@ EXP_ST void init_forkserver(char** argv) {
                            "allocator_may_return_null=1:"
                            "msan_track_origins=0", 0);
 
-    execv(target_path, argv);
+    execv(target_path, argv); // 执行目标程序
 
     /* Use a distinctive bitmap signature to tell the parent about execv()
        falling through. */
@@ -2121,7 +2121,7 @@ EXP_ST void init_forkserver(char** argv) {
 
   setitimer(ITIMER_REAL, &it, NULL);
 
-  rlen = read(fsrv_st_fd, &status, 4);
+  rlen = read(fsrv_st_fd, &status, 4); // 读取状态
 
   it.it_value.tv_sec = 0;
   it.it_value.tv_usec = 0;
@@ -2372,7 +2372,7 @@ static u8 run_target(char** argv, u32 timeout) {
   } else {
 
     s32 res;
-
+    // 已经有了forkserver了
     /* In non-dumb mode, we have the fork server up and running, so simply
        tell it to have at it, and then read back PID. */
 
@@ -2552,7 +2552,7 @@ static void show_stats(void);
 
 static u8 calibrate_case(char** argv, struct queue_entry* q, u8* use_mem,
                          u32 handicap, u8 from_queue) {
-
+  // use_mem保存输入测试用例
   static u8 first_trace[MAP_SIZE];
 
   u8  fault = 0, new_bits = 0, var_detected = 0,
@@ -2715,7 +2715,7 @@ static void check_map_coverage(void) {
 
 /* Perform dry run of all test cases to confirm that the app is working as
    expected. This is done only for the initial inputs, and only once. */
-
+// 只执行一次
 static void perform_dry_run(char** argv) {
 
   struct queue_entry* q = queue;
@@ -7762,6 +7762,7 @@ int main(int argc, char** argv) {
   gettimeofday(&tv, &tz);
   srandom(tv.tv_sec ^ tv.tv_usec ^ getpid());
 
+  // 参数读取
   while ((opt = getopt(argc, argv, "+i:o:f:m:t:T:dnCB:S:M:x:Q")) > 0)
 
     switch (opt) {
@@ -7939,7 +7940,7 @@ int main(int argc, char** argv) {
   if (optind == argc || !in_dir || !out_dir) usage(argv[0]);
 
   setup_signal_handlers();
-  check_asan_opts();
+  check_asan_opts(); // address sanitizer 内存错误检测工具初始化
 
   if (sync_id) fix_up_sync();
 
@@ -7991,7 +7992,7 @@ int main(int argc, char** argv) {
   check_cpu_governor();
 
   setup_post();
-  setup_shm();
+  setup_shm();  // share memory初始化
   init_count_class16();
 
   setup_dirs_fds();
@@ -8017,7 +8018,7 @@ int main(int argc, char** argv) {
   else
     use_argv = argv + optind;
 
-  perform_dry_run(use_argv);
+  perform_dry_run(use_argv); // 执行testcase
 
   cull_queue();
 
